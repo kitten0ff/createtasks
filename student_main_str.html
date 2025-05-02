@@ -1,18 +1,3 @@
-<?php 
-include $_SERVER['DOCUMENT_ROOT'].'/assets/php/functions.php';
-
-$subjects_array = sql_select("id, name", "subjects", "1");
-
-$tests = isset($_COOKIE['id_group']) ? sql_select_IJ2(
-    "tests.*, educators.ename, subjects.name as subject_name", 
-    "tests",
-    "educators",
-    "tests.id_educator = educators.id", 
-    "subjects",
-    "tests.id_subject = subjects.id",
-    "tests.id_group = '".mysqli_real_escape_string($link, $_COOKIE['id_group'])."' AND tests.status = 'Активный'"
-) : false;
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
