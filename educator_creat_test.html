@@ -1,0 +1,937 @@
+<?php
+include $_SERVER['DOCUMENT_ROOT'].'/assets/php/functions.php';
+
+$id_test = $_COOKIE['id_test'] ?? null;
+
+$test_data = $id_test ? sql_select_IJ2(
+    "tests.*, groupes.gname, subjects.name as subject_name", 
+    "tests",
+    "groupes",
+    "tests.id_group = groupes.id",
+    "subjects",
+    "tests.id_subject = subjects.id",
+    "tests.id = '".mysqli_real_escape_string($link, $id_test)."'"
+) : false;
+
+$test_data = $test_data ? mysqli_fetch_assoc($test_data) : null;
+
+//Списки групп и предметов
+$groups_array = sql_select("id, gname", "groupes", "1");
+$subjects_array = sql_select("id, name", "subjects", "1"); 
+
+$questions_array = $id_test ? sql_select("*", "questions", "id_test = '$id_test' ORDER BY num_question") : [];
+?>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Тестовые работы | Формирование теста</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/buttons.css">
+    <link rel="stylesheet" href="assets/css/modal_window.css">
+    <link rel="stylesheet" href="assets/css/dropdown_list.css">
+    <link rel="stylesheet" href="assets/css/media_query.css">
+    <script src="assets/js/jquery-3.2.1.min.js"></script>
+    <script src="assets/js/dropdown_list.js"></script>
+</head>
+
+<body>
+    <!--Шапка-->
+    <div class="head_block">
+        <h4 id="ename"></h4>
+        <p style="opacity: 0;">скрытый текст</p>
+    </div>
+
+    <!-- Блок формирования теста -->
+    <div class="content_block">
+        <div class="heading_block">
+            <div class="title_block">
+                <h1 class="str_heading">Формирование теста</h1>
+                <div class="buttons_group">
+                    <button class="cansel_button" onclick="openDeleteTestModal()">Удалить тест</button>
+                    <button class="action_button" onclick="saveTest()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+        <hr class="mb2">
+
+        <div class="form_block">
+            <h3 style="padding: 0px 10px 15px 0px;">Настройки теста<span style="color: red; font-size: 20px;"> *</span></h3>
+            <div class="form_setting">
+                <div class="form_setting_block">
+                    <div>
+                        <label for="test_name">Название:</label>
+                        <textarea id="test_name" class="text-input" placeholder="Введите название теста"><?= htmlspecialchars($test_data['name'] ?? '') ?></textarea>
+                    </div>
+                    <div>
+                        <label for="test_description">Описание:</label>
+                        <textarea id="test_description" class="text-input" style="height: 200px; max-height: 300px;" placeholder="Введите описание теста"><?= htmlspecialchars($test_data['description'] ?? '') ?></textarea>
+                    </div>
+                </div>
+                <div class="form_setting_block">
+                    <div>
+                        <label for="test_time">Время на прохождение:</label>
+                        <input type="text" 
+                            id="test_time" 
+                            value="<?= htmlspecialchars(isset($test_data['time']) ? substr($test_data['time'], 0, 5) : '') ?>"
+                            pattern="\d{2}\:\d{2}"
+                            placeholder="чч:мм"
+                            maxlength="5"
+                            oninput="formatTimeInput(this)">
+                    </div>
+                        <div>
+                        <div class="custom_select_wrapper">
+                            <label for="test_group">Группа:</label>
+                            <input type="hidden" id="test_group" name="test_group" value="<?= htmlspecialchars($test_data['id_group'] ?? '') ?>">
+                            <div class="custom_select" tabindex="0">
+                                <div class="custom_select__trigger">
+                                    <span>
+                                        <?= !empty($test_data['id_group']) 
+                                            ? htmlspecialchars($test_data['gname'] ?? 'Выберите группу') 
+                                            : 'Выберите группу' ?>
+                                    </span>
+                                    <div class="arrow"></div>
+                                </div>
+                                <div class="custom_options">
+                                    <?php foreach($groups_array as $group): ?>
+                                        <div class="custom_option" 
+                                            data-value="<?= $group['id'] ?>"
+                                            <?= ($test_data && $group['id'] == $test_data['id_group']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($group['gname']) ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="custom_select_wrapper">
+                            <label for="test_subject">Предмет:</label>
+                            <input type="hidden" id="test_subject" name="test_subject" value="<?= htmlspecialchars($test_data['id_subject'] ?? '') ?>">
+                            <div class="custom_select" tabindex="0">
+                                <div class="custom_select__trigger">
+                                    <span>
+                                        <?= !empty($test_data['id_subject']) 
+                                            ? htmlspecialchars($test_data['subject_name'] ?? 'Выберите предмет') 
+                                            : 'Выберите предмет' ?>
+                                    </span>
+                                    <div class="arrow"></div>
+                                </div>
+                                <div class="custom_options">
+                                    <?php foreach($subjects_array as $subject): ?>
+                                        <div class="custom_option" 
+                                            data-value="<?= $subject['id'] ?>"
+                                            <?= ($test_data && $subject['id'] == $test_data['id_subject']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($subject['name']) ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div> 
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="all_question_block">
+        <div class="title_block2">
+            <div class="left_column">        
+                <h3>Вопросы<span style="color: red; font-size: 20px;"> *</span></h3>
+                <span id="question-counter" class="question_counter"></span>
+            </div>
+            <div class="right_column_question">
+                <button onclick="openModal()" id="add-question-button" class="action_button">Добавить вопрос</button>
+                <div id="error-message" class="error-message">
+                    Достигнуто максимальное количество вопросов
+                </div>
+            </div>
+        </div>
+            <hr style="margin-bottom: 20px;">
+
+            <!-- Блок для отображения вопросов -->
+            <div class="all_question_content">
+                <?php if (!empty($questions_array)): ?>
+                    <?php foreach ($questions_array as $question): ?>
+                        <div class="add_question_block" data-question-id="<?= $question['id'] ?>">
+                            <div class="form_content_block" style="border: none; padding: 10px;">
+                                <div class="left_column">
+                                    <div class="question-number-edit">
+                                        <span class="question-number-display">Вопрос <?= $question['num_question'] ?></span>
+                                    </div>
+                                    <div class="question_text"><?= $question['text_question'] ?></div>
+                                </div>
+                                <div class="right_column">
+                                    <button class="img_button tooltip" data-tooltip="Редактировать вопрос" onclick="viewQuestion(this)"><img src="assets/img/edit.svg"></button>
+                                    <div class="question-order-select img_button tooltip" data-tooltip="Изменить порядковый номер">
+                                        <button class="question-order-select__trigger" onclick="showOrderEdit(this)"><img src="assets/img/sorting.svg"></button>
+                                        <div class="question-order-select__options"></div>
+                                    </div>
+                                    <button class="img_button tooltip" data-tooltip="Удалить вопрос" onclick="openModalConfirm(this)"><img src="assets/img/delete.svg"></button>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="tests_message"></div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div id="question-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal_head">
+                    <h2 id="modal-title">Новый вопрос</h2>
+                    <button class="delete_btn" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal_body">
+                    <input type="hidden" id="question_id">
+                    <div class="create_question_block">
+                        <p>Название вопроса</p>
+                        <div class="input-group">
+                            <textarea type="text" id="text_question" class="text-input" placeholder="Введите текст вопроса"></textarea>
+                        </div>
+                        <h3>Тип вопроса</h3>
+                        <div class="buttons_type">
+                            <button class="btn active" onclick="showInput('text')">Текст</button>
+                            <button class="btn" onclick="showInput('variant')">Вариант</button>
+                            <button class="btn" onclick="showInput('multiple')">Множество</button>
+                        </div>
+                        <!-- Блок для текстового ввода -->
+                        <div id="text-input-block" class="option_block active">
+                            <div class="input-group">
+                                <textarea type="text" class="textarea-input" placeholder="Введите правильный ответ"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Блок для варианта ответа (используем чекбоксы вместо радио) -->
+                        <div id="variant-input-block" class="option_block">
+                            <button class="action_button" style="margin-bottom: 15px;" onclick="addVariantInput()">Добавить вариант</button>
+                            <div class="options-container">
+                                <!-- здесь хранятся варианты ответов -->
+                            </div>
+                        </div>
+
+                        <!-- Блок для множественного выбора -->
+                        <div id="multiple-input-block" class="option_block">
+                            <button class="action_button" style="margin-bottom: 15px;" onclick="addMultipleInput()">Добавить вариант</button>
+                            <div class="options-container">
+                                <!-- здесь хранятся варианты ответов -->
+                            </div>
+                        </div>
+                        <div class="center_block">
+                            <button class="action_button" id="save-question-btn">Добавить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="question-modal-confirm" class="modal">
+            <div class="modal-content-mini">
+                <div class="modal_head">
+                    <h2>Удаление вопроса</h2>
+                    <button class="delete_btn" onclick="closeModalConfirm()">×</button>
+                </div>
+                <div class="modal_body">
+                    <p style="line-height: 4;">Вы действительно хотите удалить этот вопрос?</p>
+                    <div class="buttons_group">
+                        <button class="cansel_button" onclick="closeModalConfirm()">Отмена</button>
+                        <button class="action_button" onclick="removeQuestion()">Подтвердить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="delete-test-modal-confirm" class="modal">
+            <div class="modal-content-mini">
+                <div class="modal_head">
+                    <h2>Удаление теста</h2>
+                    <button class="delete_btn" onclick="closeDeleteTestModal()">×</button>
+                </div>
+                <div class="modal_body">
+                    <p style="line-height: 4;">Вы действительно хотите удалить этот тест?</p>
+                    <div class="buttons_group">
+                        <button class="cansel_button" onclick="closeDeleteTestModal()">Отмена</button>
+                        <button class="action_button" onclick="confirmDeleteTest()">Подтвердить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let currentMode = 'add';
+
+    //Открытие модального окна
+    function openModal(questionId = null) {
+        let questionCount = document.querySelectorAll('.add_question_block').length;
+        //Проверка на лимит в 30 вопросов
+        if (questionId === null && questionCount >= 30) {
+            updateQuestionCounter();
+            //Блокирируем кнопку при достижении максимального кол-ва вопросов
+            document.getElementById('add-question-button').disabled = true;
+            return;
+        }
+
+        //Показываем модальное окно
+        const modal = document.getElementById('question-modal');
+        modal.classList.add('active');
+        
+        //Очищение полей ввода (текст вопроса, варианты ответов)
+        document.getElementById('text_question').value = '';
+        document.querySelector('.textarea-input').value = '';
+        document.querySelectorAll('.option-group, .options-group').forEach(el => el.remove());
+        
+        //Добавление по одному варианту для типа Вариант и Множество
+        addVariantInput();
+        addMultipleInput();
+        
+        //Настройка модального окна в зависимости от режима (добавление/редактирование)
+        if (questionId) {
+            currentMode = 'edit';
+            document.getElementById('modal-title').textContent = 'Редактирование вопроса';
+            document.getElementById('question_id').value = questionId;
+            document.getElementById('save-question-btn').textContent = 'Сохранить изменения';
+            loadQuestionData(questionId);
+        } else {
+            currentMode = 'add';
+            document.getElementById('modal-title').textContent = 'Новый вопрос';
+            document.getElementById('save-question-btn').textContent = 'Добавить';
+        }
+        updateAddButtons();
+    }
+
+    //Подгрузка данных о вопросе для редактировании
+    function loadQuestionData(questionId) {
+        const id_test = getCookie("id_test");
+        $.ajax({
+            url: "/assets/php/get_question.php",
+            type: "POST",
+            data: { id_question: questionId, id_test: id_test },
+            dataType: "json",
+            success: function(response) {
+                if (response) {
+                    populateEditForm(response);
+                }
+            }
+        });
+    }
+
+    //Заполнение данных о вопросе в необходимые поля ввода
+    function populateEditForm(question) {
+        document.getElementById('text_question').value = question.text_question;
+        
+        //Устанавливаем тип вопроса и активируем соответствующую вкладку (тип вопроса)
+        const type = question.type_question;
+        showInput(type);
+        document.querySelectorAll('.buttons_type .btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.textContent.trim() === getQuestionTypeName(type)) {
+                btn.classList.add('active');
+            }
+        });
+
+        //Очищение вариантов ответа
+        document.querySelectorAll('.options-container').forEach(container => {
+            container.innerHTML = '';
+        });
+
+        //Для типов, отличаемых от текущего, добавляем пустые варианты
+        if (type !== 'variant') {
+            addVariantInput();
+        }
+        if (type !== 'multiple') {
+            addMultipleInput();
+        }
+
+        //Обработка типов вопроса
+        if (type === 'text') {
+            //Для типа "Текст"
+            document.querySelector('#text-input-block .textarea-input').value = question.true_answer || '';
+        } 
+        else {
+            //Для типа "Вариант" и "Множество"
+            const containerSelector = type === 'variant' 
+                ? '#variant-input-block' 
+                : '#multiple-input-block';
+            const container = document.querySelector(`${containerSelector} .options-container`);
+            const inputType = type === 'variant' ? 'checkbox' : 'checkbox';
+            
+            container.innerHTML = '';
+
+            //Добавление варианты ответов
+            question.options.forEach((option, index) => {
+                if (option && option.trim() !== '') {
+                    if (type === 'variant') {
+                        addVariantInput();
+                    } else {
+                        addMultipleInput();
+                    }
+                    
+                    //Заполнение вариантов
+                    const optionGroups = container.querySelectorAll(type === 'variant' ? '.option-group' : '.options-group');
+                    const lastOptionGroup = optionGroups[optionGroups.length - 1];
+
+                    const textInput = lastOptionGroup.querySelector('.text-input');
+                    textInput.value = option;
+
+                    //Правильные ответы
+                    const correctInput = lastOptionGroup.querySelector(`input[type="${inputType}"]`);
+                    if (question.true_answers.includes(option)) {
+                        correctInput.checked = true;
+                    }
+                }
+            });
+        }
+        
+        updateAddButtons();
+    }
+
+    // Функция для показа выпадающего списка с номерами вопросов
+function showOrderEdit(btn) {
+    const questionBlock = btn.closest('.add_question_block');
+    const questionId = questionBlock.dataset.questionId;
+    const currentOrder = parseInt(questionBlock.querySelector('.question-number-display').textContent.replace('Вопрос ', ''));
+    const orderSelect = btn.closest('.question-order-select');
+    
+    // Закрываем все открытые списки
+    document.querySelectorAll('.question-order-select').forEach(select => {
+        if (select !== orderSelect) {
+            select.classList.remove('open');
+            select.querySelector('.question-order-select__options').style.maxHeight = '0';
+        }
+    });
+    
+    // Переключаем текущий список
+    const isOpen = orderSelect.classList.toggle('open');
+    const optionsContainer = orderSelect.querySelector('.question-order-select__options');
+    
+    if (isOpen) {
+        // Получаем общее количество вопросов
+        const totalQuestions = document.querySelectorAll('.add_question_block').length;
+        
+        // Очищаем и заполняем список вариантами
+        optionsContainer.innerHTML = '';
+        for (let i = 1; i <= totalQuestions; i++) {
+            const option = document.createElement('div');
+            option.className = `question-order-select__option ${i === currentOrder ? 'selected' : ''}`;
+            option.textContent = i;
+            option.dataset.value = i;
+            option.addEventListener('click', function() {
+                updateQuestionOrder(i, questionId);
+                orderSelect.classList.remove('open');
+                optionsContainer.style.maxHeight = '0';
+            });
+            optionsContainer.appendChild(option);
+        }
+        
+        // Позиционируем список
+        positionOrderDropdown(optionsContainer, orderSelect);
+    } else {
+        optionsContainer.style.maxHeight = '0';
+    }
+}
+
+// Функция для позиционирования выпадающего списка
+function positionOrderDropdown(options, select) {
+    const viewportHeight = window.innerHeight;
+    const triggerRect = select.querySelector('.question-order-select__trigger').getBoundingClientRect();
+    const spaceBelow = viewportHeight - triggerRect.bottom;
+    const spaceAbove = triggerRect.top;
+    const contentHeight = options.scrollHeight;
+    const maxHeight = 200;
+    
+    options.style.overflow = 'hidden';
+    const neededHeight = Math.min(contentHeight, maxHeight);
+    
+    if (spaceBelow < neededHeight && spaceAbove > spaceBelow) {
+        options.style.top = 'auto';
+        options.style.bottom = '100%';
+        options.style.maxHeight = `${Math.min(neededHeight, spaceAbove - 10)}px`;
+    } else {
+        options.style.top = '100%';
+        options.style.bottom = 'auto';
+        options.style.maxHeight = `${Math.min(neededHeight, spaceBelow - 10)}px`;
+    }
+    
+    setTimeout(() => {
+        if (options.scrollHeight > options.clientHeight) {
+            options.style.overflowY = 'auto';
+        } else {
+            options.style.overflowY = 'hidden';
+        }
+    }, 300);
+}
+
+    //Обновление порядкого номера вопроса
+    // Обновленная функция изменения порядка вопроса
+function updateQuestionOrder(newOrder, questionId) {
+    const id_test = getCookie("id_test");
+    
+    $.ajax({
+        url: "/assets/php/update_question_order.php",
+        type: "POST",
+        data: {
+            id_question: questionId,
+            new_order: newOrder,
+            id_test: id_test
+        },
+        success: function(response) {
+            if (response === "OK") {
+                location.reload();
+            } else {
+                alert("Ошибка при обновлении порядка: " + response);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error("AJAX request failed:", status, error);
+            alert("Ошибка при отправке запроса.");
+        }
+    });
+}
+
+// Закрытие списка при клике вне его
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.question-order-select')) {
+        document.querySelectorAll('.question-order-select').forEach(select => {
+            select.classList.remove('open');
+            select.querySelector('.question-order-select__options').style.maxHeight = '0';
+        });
+    }
+});
+
+    //Сохранение вопроса
+    function saveQuestion() {
+        const questionId = document.getElementById('question_id').value;
+        const text_question = document.getElementById('text_question').value;
+        const activeOptionBlock = document.querySelector('.option_block.active');
+        const id_test = getCookie("id_test");
+        
+        let type_question = '';
+        let true_answer = '';
+        let options = Array(8).fill(''); //Массив для вариантов ответа
+
+        //Обработка типов вопроса
+        if (activeOptionBlock.id === 'text-input-block') {
+            //Для типа "Текст"
+            type_question = 'text';
+            true_answer = document.querySelector('#text-input-block .textarea-input').value;
+        } 
+        else if (activeOptionBlock.id === 'variant-input-block') {
+            //Для типа "Вариант"
+            type_question = 'variant';
+            const selectedCheckbox = document.querySelector('#variant-input-block input[type="checkbox"]:checked');
+            
+            if (!selectedCheckbox) {
+                alert("Выберите правильный вариант ответа!");
+                return;
+            }
+            
+            true_answer = selectedCheckbox.closest('.option-group').querySelector('.text-input').value;
+
+            //Собираем все варианты ответа
+            document.querySelectorAll('#variant-input-block .option-group .text-input').forEach((input, index) => {
+                if (index < 8) options[index] = input.value;
+            });
+        } 
+        else if (activeOptionBlock.id === 'multiple-input-block') {
+            //Для типа "Множество"
+            type_question = 'multiple';
+            const checkedBoxes = document.querySelectorAll('#multiple-input-block input[type="checkbox"]:checked');
+            
+            if (checkedBoxes.length === 0) {
+                alert("Выберите хотя бы один правильный вариант!");
+                return;
+            }
+            
+            //Собираем все правильные ответы через разделитель |
+            const trueAnswers = [];
+            checkedBoxes.forEach(checkbox => {
+                trueAnswers.push(checkbox.closest('.options-group').querySelector('.text-input').value);
+            });
+            
+            true_answer = trueAnswers.join('|');
+
+            //Собираем все варианты ответа
+            document.querySelectorAll('#multiple-input-block .options-group .text-input').forEach((input, index) => {
+                if (index < 8) options[index] = input.value;
+            });
+        }
+
+        //Определяем режим и данные для запроса в зависимости от режима
+        const url = currentMode === 'add' ? 
+            "/assets/php/add_question.php" : 
+            "/assets/php/update_question.php";
+        
+        const data = {
+            text_question: text_question,
+            type_question: type_question,
+            true_answer: true_answer,
+            option1: options[0],
+            option2: options[1],
+            option3: options[2],
+            option4: options[3],
+            option5: options[4],
+            option6: options[5],
+            option7: options[6],
+            option8: options[7]
+        };
+
+        if (currentMode === 'add') {
+            data.question_number = document.querySelectorAll('.add_question_block').length + 1;
+            data.id_test = id_test;
+        } else {
+            data.id_question = questionId;
+        }
+
+        $.ajax({
+            url: url,
+            type: "POST",
+            data: data,
+            success: function(data) {
+                if (data === "OK") {
+                    closeModal();
+                    location.reload();
+                } else {
+                    alert("Ошибка: " + data);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX request failed:", status, error);
+                alert("Ошибка при отправке запроса.");
+            }
+        });
+    }
+
+    //Открываем модальное окно для редактирования вопроса
+    function viewQuestion(btn) {
+        const questionBlock = btn.closest('.add_question_block');
+        const questionId = questionBlock.dataset.questionId;
+        openModal(questionId);
+    }
+
+    function create_test(){
+        window.location.href = "/educator_main_str.php";
+    }
+
+    function closeModal(){
+        document.getElementById('question-modal').classList.remove('active');
+    }
+
+    function openModalConfirm(btn) {
+        window.currentDeleteButton = btn;
+        document.getElementById('question-modal-confirm').classList.add('active');
+    }
+
+    function closeModalConfirm() {
+        document.getElementById('question-modal-confirm').classList.remove('active');
+    }
+
+    function openDeleteTestModal() {
+        document.getElementById('delete-test-modal-confirm').classList.add('active');
+    }
+    
+    function closeDeleteTestModal() {
+        document.getElementById('delete-test-modal-confirm').classList.remove('active');
+    }
+
+    //Формат для ввода времени на прохождение
+    function formatTimeInput(input) {
+        let value = input.value.replace(/[^0-9]/g, '');
+        
+        if (value.length > 2) {
+            value = value.substring(0, 2) + ':' + value.substring(2);
+        }
+        
+        if (value.length > 5) {
+            value = value.substring(0, 5);
+        }
+        
+        input.value = value;
+    }
+
+    //Счетчик вопросов
+    function updateQuestionCounter() {
+        const questionCount = document.querySelectorAll('.add_question_block').length;
+        const counterElement = document.getElementById('question-counter');
+        counterElement.textContent = `Количество вопросов: ${questionCount} из 30`;
+
+        //Показываем/скрываем сообщение о достижении лимита
+        const messageElement = document.getElementById('error-message');
+        if (messageElement) {
+            messageElement.style.display = questionCount >= 30 ? 'block' : 'none';
+        }
+
+        //Блокируем кнопку добавления при достижении лимита
+        const addButton = document.getElementById('add-question-button');
+        if (addButton) {
+            addButton.disabled = questionCount >= 30;
+        }
+    }
+
+    //Удаление вопроса
+    function removeQuestion() {
+        const btn = window.currentDeleteButton;
+        const questionBlock = btn.closest('.add_question_block');
+        const questionNumber = questionBlock.querySelector('.question-number-display').textContent.replace('Вопрос ', '');
+        const id_test = getCookie("id_test");
+
+        $.ajax({
+            url: "/assets/php/delete_question.php",
+            type: "POST",
+            data: {
+                question_number: questionNumber,
+                id_test: id_test
+            },
+            success: function(data) {
+                if (data === "OK") {
+                    questionBlock.remove();
+                    updateQuestionNumbers();
+                    updateQuestionCounter();
+                    check_forms();
+                    closeModalConfirm();
+                } else {
+                    alert("Ошибка при удалении вопроса: " + data);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX request failed:", status, error);
+                alert("Ошибка при отправке запроса.");
+            }
+        });
+    }
+
+    //Удаление теста
+    function confirmDeleteTest() {
+        const id_test = getCookie("id_test");
+        
+        $.ajax({
+            url: "/assets/php/delete_test.php",
+            type: "POST",
+            data: {
+                id_test: id_test
+            },
+            success: function(data) {
+                if (data === "OK") {
+                    document.cookie = "id_test=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                    
+                    window.location.href = "/educator_main_str.php";
+                } else {
+                    alert("Ошибка при удалении теста: " + data);
+                    closeDeleteTestModal();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX request failed:", status, error);
+                alert("Ошибка при отправке запроса.");
+                closeDeleteTestModal();
+            }
+        });
+    }
+
+    //Обновление номеров вопроса после изменений
+    function updateQuestionNumbers() {
+        const questions = document.querySelectorAll('.question-number-display');
+        questions.forEach((question, index) => {
+            question.textContent = `Вопрос ${index + 1}`;
+        });
+    }
+
+    //Проверка на наличие вопросов
+    function check_forms(){
+        const formContent = document.querySelector('.all_question_content');
+        let noTestsMessage = document.querySelector('.tests_message');
+
+        //Сообщение при отсутствии вопросов
+        if (!noTestsMessage){
+            noTestsMessage = document.createElement('div');
+            noTestsMessage.className = 'tests_message';
+            noTestsMessage.textContent = 'Вопросы отсутствуют';
+            formContent.parentNode.insertBefore(noTestsMessage, formContent);
+        }
+
+        //Показываем/скрываем сообщение в зависимости от наличия вопросов
+        noTestsMessage.style.display = formContent.children.length > 0 ? 'none' : 'block';
+    }
+
+    //Переключение типов вопроса
+    function showInput(type, btn) {
+        const currentTypeBlock = document.querySelector('.option_block.active');
+
+        //Если уже выбран этот тип - ничего не происходит
+        if (currentTypeBlock.id === `${type}-input-block`) return;
+
+        // Обновление активных кнопок типа вопроса
+        document.querySelectorAll('.buttons_type .btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        if (btn) {
+            btn.classList.add('active');
+        } else {
+            const buttons = document.querySelectorAll('.buttons_type .btn');
+            buttons.forEach(b => {
+                if (b.textContent.trim() === getQuestionTypeName(type)) {
+                    b.classList.add('active');
+                }
+            });
+        }
+
+        //Скрываем все блоки опций и показываем нужный
+        document.querySelectorAll('.option_block').forEach(block => {
+            block.classList.remove('active');
+        });
+        document.getElementById(`${type}-input-block`).classList.add('active');
+        
+        if (type !== 'text') {
+            const container = document.querySelector(`#${type}-input-block .options-container`);
+            if (container.children.length === 0) {
+                if (type === 'variant') {
+                    addVariantInput();
+                } else {
+                    addMultipleInput();
+                }
+            }
+        }
+    }
+
+    //Удаление варианта ответов
+    function removeInput(btn) {
+        var parentBlock = btn.closest('.option_block');
+        var groupOptions = parentBlock.id.includes('variant') 
+            ? '.option-group' 
+            : '.options-group';
+        
+        btn.closest(groupOptions).remove();
+        updateAddButtons();
+    }
+
+    //Создание варианта ответа
+    function createOptionInput(containerSelector, inputType, groupClass) {
+        const container = document.createElement('div');
+        container.className = groupClass;
+        
+        const isVariant = containerSelector === '#variant-input-block';
+        const actualInputType = isVariant ? 'checkbox' : inputType;
+        const inputClass = isVariant ? 'single-checkbox' : '';
+        
+        //HTML структура варианта ответа
+        container.innerHTML = `
+            <div class="input-delete-group">
+                <input type="text" class="text-input" placeholder="Введите вариант ответа">
+                <button class="delete_btn tooltip" data-tooltip="Удалить вариант" onclick="removeInput(this)">×</button>
+            </div>
+            <div class="label-group">
+                <input type="${actualInputType}" class="${inputClass}" ${isVariant ? 'name="variant-options"' : ''}>
+                <label>Правильный</label>
+            </div>
+        `;
+        
+        //Добавление в контейенер
+        document.querySelector(`${containerSelector} .options-container`).appendChild(container);
+        updateAddButtons();
+        
+        //Для одиночного выбора добавляем обработчик снятия других отметок (выбор только одного чекбокса)
+        if (isVariant) {
+            const checkbox = container.querySelector('input[type="checkbox"]');
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    document.querySelectorAll(`${containerSelector} .single-checkbox`).forEach(cb => {
+                        if (cb !== this) cb.checked = false;
+                    });
+                }
+            });
+        }
+    }
+
+    //Для типа "Вариант"
+    function addVariantInput() {
+        createOptionInput('#variant-input-block', 'checkbox', 'option-group');
+    }
+
+    //Для типа "Множество"
+    function addMultipleInput() {
+        createOptionInput('#multiple-input-block', 'checkbox', 'options-group');
+    }
+
+    //Обновление состояния кнопок
+    function updateAddButtons(){
+        var variantCount = document.querySelectorAll('#variant-input-block .option-group').length;
+        var multipleCount = document.querySelectorAll('#multiple-input-block .options-group').length;
+
+        //Блокируем кнопки при достижении лимита (8 вариантов)
+        document.querySelector('#variant-input-block .action_button').disabled = variantCount >= 8;
+        document.querySelector('#multiple-input-block .action_button').disabled = multipleCount >= 8;
+    }
+
+    function getQuestionTypeName(type) {
+        const types = {
+            'text': 'Текст',
+            'variant': 'Вариант', 
+            'multiple': 'Множество'
+        };
+        return types[type] || type;
+    }
+
+    //Сохранение настроек теста
+    function saveTest() {
+        const testName = document.getElementById('test_name').value;
+        const testDescription = document.getElementById('test_description').value;
+        const testTime = document.getElementById('test_time').value;
+        const testGroup = document.getElementById('test_group').value;
+        const testSubject = document.getElementById('test_subject').value;
+        const id_test = getCookie("id_test");
+
+        if (!testName || !testTime || testGroup === '' || testSubject === '') {
+            alert("Заполните все обязательные поля!");
+            return;
+        }
+
+        $.ajax({
+            url: "/assets/php/update_test_setting.php",
+            type: "POST",
+            data: {
+                id_test: id_test,
+                name: testName,
+                description: testDescription,
+                time: testTime,
+                id_group: testGroup,
+                id_subject: testSubject
+            },
+            success: function(response) {
+                if (response === "OK") {
+                    alert("Настройки теста успешно сохранены!");
+                    window.location.href = "educator_main_str.php";
+                } else {
+                    alert("Ошибка при сохранении: " + response);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX request failed:", status, error);
+                alert("Ошибка при отправке запроса.");
+            }
+        });
+    }
+
+    //Инициализация при загрузке страницы
+    window.onload = function(){
+        document.getElementById('ename').textContent = getCookie("ename");
+        check_forms();
+        updateQuestionCounter();
+        
+        
+        //Назначаем обработчик сохранения вопроса
+        document.getElementById('save-question-btn').addEventListener('click', saveQuestion);
+    }
+
+    //Получаем значение cookie по имени
+    function getCookie(name){
+        let matches = document.cookie.match(new RegExp(
+            "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
+        ));
+        return matches ? decodeURIComponent(matches[1]) : undefined;
+    }
+    </script>
+</body>
+</html>

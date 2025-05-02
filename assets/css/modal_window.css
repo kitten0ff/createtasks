@@ -1,0 +1,28 @@
+/* Модальное окно */
+.modal {position: fixed; top: 0; right: 0; bottom: 0; left: 0; background-color: rgba(0, 0, 0, 0.5); z-index: 1050; opacity: 0; -webkit-transition: opacity 300ms ease-in;
+  -moz-transition: opacity 300ms ease-in; transition: opacity 300ms ease-in; pointer-events: none; display: flex; justify-content: center; align-items: center;}
+.modal.active {opacity: 1;pointer-events: auto;overflow-y: auto;}
+.modal-content, .modal-content-mini, .modal-content-full{position: relative; flex-direction: column; background-color: white; margin: 20px auto; border-radius: 8px; width: 90%; 
+  max-height: calc(100vh - 5%); overflow-y: auto;}
+
+/*Ширина модального окна*/
+.modal-content {max-width: 40%;}
+.modal-content-mini {max-width: 30%;}
+.modal-content-full {max-width: 60%;}
+
+/*Заголовок*/
+.modal_head {display: flex;justify-content: space-between;padding: 15px;border-bottom: 1px solid #eceeef;align-items: center;}
+
+/*Основной контент*/
+.modal_body {padding: 15px;}
+
+/*Кнопки управления*/
+.buttons_group {display: flex;justify-content: flex-end;gap: 10px; /* Добавляет промежуток между кнопками */}
+
+/*Информация о тесте в модальном окне*/
+.testBlock{margin-bottom: 15px;  /* Отступ между блоками */}
+.testLabel{display: block;font-weight: bold;color: #333;  /* Цвет текста метки */}
+.testText{padding: 5px; color: #555;  /* Цвет текста информации */  }
+.time-text {
+  white-space: nowrap;
+}

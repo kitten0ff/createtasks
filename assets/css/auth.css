@@ -1,0 +1,26 @@
+/*==========ОБЩЕЕ==========*/
+*{margin: 0 auto; padding: 0; color: #333;}
+body{display: flex; justify-content: center; align-items: center; min-height: 80vh; font-family: Arail, sans-serif; background-color: #f8fafc;}
+
+/*==========КЛАССЫ==========*/
+/*Форма*/
+.form_auth{width: 450px; height: 480px; display: flex; justify-content: center; align-items: center; border-radius: 20px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); background-color: #fff;}
+
+/*Загаловок*/
+h2{font-size: 2em; text-align: center;}
+
+/*Поля вода*/
+.input_auth{position: relative; margin: 45px 0; width: 370px; border-bottom: 2px solid black;}
+.input_auth label{position: absolute; top: 35%; left: 5px; font-size: 1.1em; pointer-events: none; transform: translate(-50); transition: 0.4s;}
+input:hover ~label, input:focus ~label, input:valid ~label{top: -10px;}
+.input_auth input{width: 100%; height: 50px; border: none; outline: none; font-size: 1em;}
+
+/*Кнопка*/
+.button_auth{width: 100%; height: 50px; margin-top: 30px; border-radius: 10px; border: none; outline: none; background-color: #007bff; transition: background-color 0.3s ease; transform: 0.3s ease; color: white; font-size: 1em; cursor: pointer;}
+.button_auth:hover{background-color: #0056b3;}
+
+.error_message {
+    color: red;
+    font-size: 0.9em;
+    margin-top: 5px;
+}

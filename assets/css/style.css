@@ -1,0 +1,222 @@
+/*==========ОБЩИЕ==========*/
+*{margin: 0; padding: 0; font-size: 18px; font-weight: 100; font-family: Arial, sans-serif;}
+body{background-color: #f8fafc; }
+
+/*==========КЛАССЫ==========*/
+/*--Вспомогательные классы--*/
+
+/*отступы*/
+.mb2{margin-bottom: 2em;}
+
+/*если необходимо расположить элемент (перед этим завернуть его в блок) по центру*/
+.center_block{display: flex; justify-content: center; align-items: center;}
+
+/*Шапка страницы*/
+.head_block {top: 0; padding: 20px 30px; background-color: #333; display: flex; justify-content: space-around; align-items: center; }
+.heading_block{margin: 2em 0;}
+.title_block{display: flex; justify-content: space-around; align-items: center;}
+.title_block2{display: flex; justify-content: space-between; align-items: center; padding: 10px 0;}
+
+
+/*Форма*/
+.form_block, .main_form_block, .add_question_block, .all_question_block{max-width: 55%; padding: 20px; margin: 30px auto; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); background-color: white; border-radius: 10px; border: 1px solid #e0e0e0; position: relative;}
+.main_form_block {max-width: 55%; min-height: 500px;}
+.add_question_block{max-width: 90%; margin: 10px auto; box-shadow: none; border: 1px solid #ccc;}
+.form_content {display: flex; flex-direction: column; gap: 15px;} /*вертикально*/
+.form_setting{display: flex; align-items: flex-start; gap: 20px; overflow: visible;} /*горизонтально*/
+
+/* Линия между фильтром и тестами */
+.line_block{
+    width: 100%;
+    border-bottom: 2px solid #e0e0e0;
+    margin: 15px 0;
+}
+
+/*Форма создания теста*/
+.form_setting_block{flex: 1; display: flex; flex-direction: column; gap: 15px;}
+.form_setting_block select, .form_setting_block input, .form_setting_block textarea{width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;}
+.form_setting_block label{padding-bottom: 10px;}
+.form_setting_block div {position: relative; margin-bottom: 0;}
+
+.tests_message {
+    margin: 80px 0;
+    text-align: center;
+    font-size: 20px;
+    width: 100%;
+    display: block;
+}
+
+.task_block {
+    width: 80%;
+    flex-direction: column;
+    gap: 20px; 
+}
+
+.question-number-edit {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+
+.order-select {
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    width: 60px;
+}
+
+
+/* Стили для подсказки */
+.tooltip {
+    position: relative;
+}
+
+.tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-right: 8px;
+    padding: 6px 12px;
+    background: #999;
+    color: white;
+    font-size: 14px;
+    white-space: nowrap;
+    border-radius: 4px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    z-index: 100;
+    width: max-content;
+    max-width: 200px;
+    text-align: center;
+    pointer-events: none;
+    font-family: Arial, sans-serif;
+    line-height: 1.4;
+}
+
+.tooltip:hover::after,
+.tooltip:hover::before {
+    transition-delay: 0.5s;
+    opacity: 1;
+    visibility: visible;
+}
+
+
+
+
+
+
+
+
+.question_counter{font-size: 14px; color: #999;}
+
+/*Блок с решением теста*/
+.question_block{display: flex;flex-direction: column;gap: 15px;}
+.question_number{font-weight: bold; color: #333;}
+.question_text{color: #666; display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;    
+    margin-bottom: 10px;
+}
+
+.answer_block{display: flex; flex-direction: column; gap: 12px;}
+.answer_container{display: flex; align-items: flex-start;gap: 8px;}
+.answer_container input[type="checkbox"]{width: 15px;height: 15px;cursor: pointer;}
+.answer_input{width: 100%; padding: 5px; border: 1px solid #999; border-radius: 5px; transition: border 0.3s ease, transform 0.3s ease;}
+
+.answer_input:focus{border: 1px solid #007bff; outline: none;}
+.answer_container label{color: #666;cursor: pointer;text-align: left;}
+.question_instruction {
+    font-style: italic;
+    color: #333;
+    font-size: 17px;
+}
+
+/* Выравнивание для всего контента */ 
+.form_test, .task_block, .question_block, .answer_block, .answer_container { text-align: left; }
+
+/*Блок сообщения*/
+.task_block{ max-width: 70%; padding: 30px; background-color: white; border: 1px solid #ccc; border-radius: 15px; }
+.form_content_block{ display: flex; justify-content: space-between; align-items: center; padding: 0.5em 0.2em; border-bottom: 1px solid #666; }
+.left_column{ flex-direction: column; gap: 15px; text-align: left; flex: 1; max-width: 80%; word-break: break-word;}
+.right_column{display: flex; gap: 10px;}
+.right_column_question {display: flex; flex-direction: column; align-items: flex-end;}
+
+.error-message {
+    margin: 5px;
+    color: red;
+    font-size: 14px;
+    display: none;
+}
+
+/*название теста*/
+.test_title{ 
+    font-size: 24px; 
+    color: #333; 
+    display: -webkit-box;
+    line-clamp: 1;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.test_description{ 
+    color: #666; 
+    line-height: 1.5; 
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #666;
+    max-width: 95%;
+}
+.test_details{display: flex; margin-top: 5px; align-items: center; gap: 30px;}
+.test_detail{color: #333; line-height: 1.5;}
+
+
+/*==========ТЕГИ==========*/
+/*Линия*/
+hr{border: none; background-color: #6B6B6B; height: 1px;}
+
+/*Заголовки/текст*/
+.str_heading{font-size: 1.5em;}
+
+h2{text-align: center; color: #333; font-size: 1.5em;}
+h4{color: white; font-weight: 200;}
+
+input:placeholder-shown{text-overflow: ellipsis;}
+    
+.buttons_type{ display: flex; gap: 10px; margin-bottom: 20px; }
+
+.option_block{display: none; margin-top: 20px; padding: 15px; border-radius: 4px; background-color: #f8fafc; margin: 20px;}
+.option_block.active { display: block; }
+
+    /* Блок с сазданием вопроса */
+    .input-group {display: flex; align-items: center; gap: 15px; margin-bottom: 10px;}
+    .text-input, .textarea-input{width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical; max-height: 200px; font-family: Arial, sans-serif;}
+    .textarea-input {height: 150px;}
+    .option-group, .options-group{ display: flex; align-items: center; gap: 15px; margin-bottom: 10px;}
+    .input-delete-group {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        flex: 1;
+    }
+
+    .label-group {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    label {
+        margin-left: 5px;
+    }

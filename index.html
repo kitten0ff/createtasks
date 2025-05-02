@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Тестовые работы | Вход в систему</title>
+    <link rel="stylesheet" href="assets/css/auth.css">
+    <script src="assets/js/device.min.js"></script>
+    <script src="assets/js/jquery-3.2.1.min.js"></script> 
+</head>
+<body>
+<div class="form_auth">
+    <form action="">
+        <h2>Вход в систему</h2>
+        <div class="input_auth">
+            <input type="text" id="log" required>
+            <label>Логин</label>
+        </div>
+        <div class="input_auth">
+            <input type="password" id="pas" required>
+            <label>Пароль</label>
+        </div>
+        <input type="submit" class="button_auth" onclick="link_auth()" value="Войти">
+    </form>
+</div>
+<script>
+    function link_auth(){
+        var log=document.getElementById('log');
+        var pas=document.getElementById('pas');
+        $.ajax({
+            url: "/assets/php/auth.php",
+            type: "POST",
+            data: {log:log.value,pas:pas.value},
+            dataType: "html",
+            success: function(data){
+                if($.parseJSON(data)[0]=="log_not"){
+                    alert("Вы указали несуществующий логин");
+                } else if($.parseJSON(data)[0]=="pas_not"){
+                    alert("Вы указали неверный пароль");
+                } else if($.parseJSON(data)[0]=="educator_ok"){
+                    var expires = new Date();
+                    expires.setTime(expires.getTime() + (24 * 60 * 60 * 1000)); // 24 часа
+                    
+                    document.cookie = "id_educator="+$.parseJSON(data)[1]+"; expires="+expires.toUTCString()+"; path=/";
+                    document.cookie = "ename="+$.parseJSON(data)[2]+"; expires="+expires.toUTCString()+"; path=/";
+                    window.location.href="educator_main_str.php";
+                } else if($.parseJSON(data)[0]=="student_ok"){
+                    var expires = new Date();
+                    expires.setTime(expires.getTime() + (24 * 60 * 60 * 1000)); // 24 часа
+                    document.cookie = "id_student="+$.parseJSON(data)[1]+"; expires="+expires.toUTCString()+"; path=/";
+                    document.cookie = "sname="+$.parseJSON(data)[2]+"; expires="+expires.toUTCString()+"; path=/";
+                    document.cookie = "id_group="+$.parseJSON(data)[3]+"; expires="+expires.toUTCString()+"; path=/";
+                    window.location.href="student_main_str.php";
+                }
+            }, 
+            error: function(xhr, status, error){
+            console.error("AJAX request failed:", status, error);
+            }
+        })
+    }
+    </script>
+</body>
+</html>

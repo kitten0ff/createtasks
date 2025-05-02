@@ -1,0 +1,216 @@
+<?php
+include $_SERVER['DOCUMENT_ROOT'].'/assets/php/functions.php';
+
+$test_id = isset($_COOKIE['current_test_id']) ? mysqli_real_escape_string($link, $_COOKIE['current_test_id']) : false;
+
+$test_info = $test_id ? sql_select_IJ1(
+    "tests.*, educators.ename", 
+    "tests",
+    "educators",
+    "tests.id_educator = educators.id", 
+    "tests.id = '".$test_id."'"
+) : false;
+$test_data = $test_info && mysqli_num_rows($test_info) > 0 ? mysqli_fetch_assoc($test_info) : null;
+
+$questions = $test_id ? sql_select(
+    "text_question, num_question, type_question, option1, option2, option3, option4, option5, option6, option7, option8", 
+    "questions", 
+    "id_test = '".$test_id."' ORDER BY num_question"
+) : false;
+?>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Тестовые работы | Кабинет студента</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/buttons.css">
+    <link rel="stylesheet" href="assets/css/modal_window.css">
+    <link rel="stylesheet" href="assets/css/media_query.css">
+    <script src="assets/js/jquery-3.2.1.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+    <!--Шапка-->
+    <div class="head_block">
+        <div class="dib">
+            <h4 id="sname"></h4>
+        </div>
+        <div class="dib">
+            <a href="index.php" class="exit_button">Выход</a>
+        </div>
+    </div>
+
+    <div class="content_block">
+        <div class="heading_block">
+            <div class="title_block">
+                <div class="test-header-container">
+                    <h1 class="str_heading test-title"><?= $test_data ? htmlspecialchars($test_data['name']) : 'Название теста' ?></h1>
+                </div>
+                <p style="opacity: 0;">скрытый текст</p>
+            </div>
+        </div>
+        <hr>
+    </div>
+    
+    <?php if ($questions && mysqli_num_rows($questions) > 0): ?>
+        <?php while ($question = mysqli_fetch_assoc($questions)): ?>
+            <div class="form_block">
+                <div class="form_content">
+                    <div class="question_block">
+                        <div class="question_number">Вопрос № <?= htmlspecialchars($question['num_question']) ?></div>
+                        <div class="question_text"><?= htmlspecialchars($question['text_question']) ?></div>
+                        
+                        <?php if ($question['type_question'] == 'text'): ?>
+                            <div class="question_instruction">Дайте текстовый ответ</div>
+                            <!-- Текстовый ответ -->
+                            <div class="answer_container">
+                                <input class="answer_input" type="text" id="answer_<?= $question['num_question'] ?>" name="answer_<?= $question['num_question'] ?>">
+                            </div>
+                            
+                            <?php elseif ($question['type_question'] == 'variant'): ?>
+                                <div class="question_instruction">Выберите один вариант ответа</div>
+                                <!-- Один вариант ответа -->
+                                <div class="answer_block">
+                                    <?php for ($i = 1; $i <= 8; $i++): ?>
+                                        <?php if (!empty($question['option'.$i])): ?>
+                                            <div class="answer_container">
+                                                <input type="checkbox" class="single-checkbox" 
+                                                    id="option_<?= $question['num_question'] ?>_<?= $i ?>" 
+                                                    name="answer_<?= $question['num_question'] ?>" 
+                                                    value="<?= htmlspecialchars($question['option'.$i]) ?>">
+                                                <label for="option_<?= $question['num_question'] ?>_<?= $i ?>">
+                                                    <?= htmlspecialchars($question['option'.$i]) ?>
+                                                </label>
+                                            </div>
+                                        <?php endif; ?>
+                                    <?php endfor; ?>
+                                </div>
+                            
+                        <?php elseif ($question['type_question'] == 'multiple'): ?>
+                            <div class="question_instruction">Выберите несколько вариантов ответа</div>
+                            <!-- Множественный выбор -->
+                            <div class="answer_block">
+                                <?php for ($i = 1; $i <= 8; $i++): ?>
+                                    <?php if (!empty($question['option'.$i])): ?>
+                                        <div class="answer_container">
+                                            <input type="checkbox" id="option_<?= $question['num_question'] ?>_<?= $i ?>" 
+                                                   name="answer_<?= $question['num_question'] ?>[]" value="<?= htmlspecialchars($question['option'.$i]) ?>">
+                                            <label for="option_<?= $question['num_question'] ?>_<?= $i ?>"><?= htmlspecialchars($question['option'.$i]) ?></label>
+                                        </div>
+                                    <?php endif; ?>
+                                <?php endfor; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        <?php endwhile; ?>
+    <?php endif; ?>
+
+    <div class="center_block">
+        <button onclick="openModalConfirm()" style="margin-bottom: 20px" class="action_button">Завершить</button>
+    </div>
+
+    <div id="question-modal-confirm" class="modal">
+        <div class="modal-content-mini">
+            <div class="modal_head">
+                <h2>Завершение теста</h2>
+                <button class="delete_btn" onclick="closeModalConfirm()">×</button>
+            </div>
+            <div class="modal_body">
+                <p style="line-height: 4;">Вы действительно хотите завершить этот тест?</p>
+                <div class="buttons_group">
+                    <button class="cansel_button" onclick="closeModalConfirm()">Отмена</button>
+                    <button class="action_button" onclick="completedTest()">Подтвердить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function openModalConfirm(btn) {
+        window.currentDeleteButton = btn;
+        document.getElementById('question-modal-confirm').classList.add('active');
+    }
+
+    function closeModalConfirm() {
+        document.getElementById('question-modal-confirm').classList.remove('active');
+    }
+    
+    function completedTest(){
+        window.location.href="student_result.php";
+    }
+
+    function completedTest() {
+        const answers = {};
+        let allAnswered = true;
+        
+        // Сбор всех ответов
+        document.querySelectorAll('.question_block').forEach(question => {
+            const num = question.querySelector('.question_number').textContent.match(/\d+/)[0];
+            const type = question.dataset.type; // Нужно добавить data-type к блоку вопроса
+            
+            if (type === 'text') {
+                const answer = question.querySelector('.answer_input').value.trim();
+                if (!answer) allAnswered = false;
+                answers[num] = answer;
+            } 
+            else {
+                const checked = Array.from(question.querySelectorAll('input[type="checkbox"]:checked'))
+                                    .map(el => el.value);
+                if (checked.length === 0) allAnswered = false;
+                answers[num] = type === 'variant' ? checked[0] : checked;
+            }
+        });
+        
+        
+        // Отправка на сервер
+        fetch('/assets/php/submit_test.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                test_id: <?= $test_id ?>,
+                answers: answers
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = "student_result.php?result_id=" + data.result_id;
+            }
+        });
+    }
+    
+    // Инициализация при загрузке DOM
+    document.addEventListener('DOMContentLoaded', function() {
+        //При одиночном выборе снимаем с других отметок (выбор только одного чекбокса)
+        document.querySelectorAll('.single-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    const groupName = this.name;
+                    document.querySelectorAll(`input[name="${groupName}"]`).forEach(cb => {
+                        if (cb !== this) cb.checked = false;
+                    });
+                }
+            });
+        });
+    });
+
+    //Инициализация при загрузке страницы
+    window.onload = function() {
+        document.getElementById('sname').textContent = getCookie("sname");
+    }
+    
+    //Получаем значение cookie по имени
+    function getCookie(name) {
+        let matches = document.cookie.match(new RegExp(
+            "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
+        ));
+        return matches ? decodeURIComponent(matches[1]) : undefined;
+    }
+    </script>
+</body>
+</html>

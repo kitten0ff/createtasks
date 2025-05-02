@@ -1,0 +1,112 @@
+<?php
+include $_SERVER['DOCUMENT_ROOT'].'/assets/php/functions.php';
+
+// Проверяем наличие необходимых данных
+if (!isset($_GET['result_id']) || !isset($_COOKIE['id_student'])) {
+    die("Недостаточно данных для отображения результатов");
+}
+
+$result_id = mysqli_real_escape_string($link, $_GET['result_id']);
+$student_id = mysqli_real_escape_string($link, $_COOKIE['id_student']);
+
+// 1. Получаем основной результат теста
+$result_query = sql_select_IJ1(
+    "test_results.*, tests.name as test_name",
+    "test_results",
+    "tests",
+    "test_results.id_test = tests.id",
+    "test_results.id = '$result_id' AND test_results.id_student = '$student_id'"
+);
+
+if (!$result_query) {
+    die("Ошибка SQL запроса результатов: " . mysqli_error($link));
+}
+
+if (mysqli_num_rows($result_query) === 0) {
+    die("Результат теста не найден");
+}
+
+$result_data = mysqli_fetch_assoc($result_query);
+
+// 2. Получаем данные студента
+$student_query = sql_select(
+    "name as student_name, id_group",
+    "students",
+    "id = '$student_id'"
+);
+
+$student_data = $student_query && mysqli_num_rows($student_query) > 0 
+    ? mysqli_fetch_assoc($student_query) 
+    : ['student_name' => 'Неизвестный', 'id_group' => 'Не указана'];
+
+// 3. Получаем детализированные ответы (исправленный запрос)
+$details_query = mysqli_query($link, 
+    "SELECT student_answers.*, questions.text_question 
+     FROM student_answers 
+     JOIN questions ON student_answers.id_question = questions.id 
+     WHERE student_answers.id_result = '$result_id'"
+);
+
+if (!$details_query) {
+    die("Ошибка при получении деталей результатов: " . mysqli_error($link));
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Результаты теста | Кабинет студента</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/buttons.css">
+    <link rel="stylesheet" href="assets/css/media_query.css">
+</head>
+<body>
+    <!--Шапка-->
+    <div class="head_block">
+        <div class="dib">
+            <h4><?= htmlspecialchars($student_data['student_name']) ?></h4>
+            <h4>Группа <?= htmlspecialchars($student_data['id_group']) ?></h4>
+        </div>
+        <div class="dib">
+            <a href="index.php" class="exit_button">Выход</a>
+        </div>
+    </div>
+    <div class="content_block">
+        <div class="heading_block">
+            <div class="title_block">
+                <div class="test-header-container">
+                <h1 class="str_heading">Результат теста</h1>
+                </div>
+                <p style="opacity: 0;">скрытый текст</p>
+            </div>
+        </div>
+        <hr>
+    </div>
+
+
+    <div style="margin: 40px 400px">
+        <div class="result-summary">
+            <h2>Тест: <?= htmlspecialchars($result_data['test_name']) ?></h2>
+            <br>
+            <div class="score-display" style="font-size: 25px; color: red;">
+                Ваш результат: <?= $result_data['score'] ?> из <?= $result_data['max_score'] ?>
+                (<?= $result_data['percentage'] ?>%)
+            </div>
+        </div>
+
+        <div class="detailed-results">
+            <?php if (mysqli_num_rows($details_query) > 0): ?>
+                <?php while ($detail = mysqli_fetch_assoc($details_query)): ?>
+                    <div class="question-result  <?= $detail['is_correct'] ? 'correct' : 'incorrect' ?>">
+                        <h3><?= htmlspecialchars($detail['text_question']) ?></h3>
+                        <p>Ваш ответ: <?= htmlspecialchars($detail['answer']) ?></p>
+                        <p><?= $detail['is_correct'] ? '✓ Верно' : '✗ Неверно' ?></p>
+                    </div>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <p>Детали результатов не найдены</p>
+            <?php endif; ?>
+        </div>
+    </div>
+</body>
+</html>

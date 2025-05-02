@@ -1,0 +1,6 @@
+/*Фильтр*/
+.filter-block {position: relative;max-width: 100%;}
+.filter-row { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; justify-content: center; width: 100%; }
+.filter-item { display: flex; flex-direction: column; flex-grow: 1; }   
+.filter-item label { margin-bottom: 5px; color: #333; font-size: 14px; }
+.filter-item select, .filter-item input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; width: 100%; box-sizing: border-box; }

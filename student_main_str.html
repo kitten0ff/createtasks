@@ -1,0 +1,376 @@
+<?php 
+include $_SERVER['DOCUMENT_ROOT'].'/assets/php/functions.php';
+
+$subjects_array = sql_select("id, name", "subjects", "1");
+
+$tests = isset($_COOKIE['id_group']) ? sql_select_IJ2(
+    "tests.*, educators.ename, subjects.name as subject_name", 
+    "tests",
+    "educators",
+    "tests.id_educator = educators.id", 
+    "subjects",
+    "tests.id_subject = subjects.id",
+    "tests.id_group = '".mysqli_real_escape_string($link, $_COOKIE['id_group'])."' AND tests.status = 'Активный'"
+) : false;
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Тестовые работы | Кабинет студента</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/buttons.css">
+    <link rel="stylesheet" href="assets/css/filter.css">
+    <link rel="stylesheet" href="assets/css/modal_window.css">
+    <link rel="stylesheet" href="assets/css/media_query.css">
+    <script src="assets/js/jquery-3.2.1.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+    <!--Шапка-->
+    <header class="head_block">
+        <div class="dib">
+            <h4 id="sname"></h4>
+        </div>
+        <div class="dib">
+            <a href="index.php" class="exit_button" onclick="clearAllCookies()">Выход</a>
+        </div>
+    </header>
+
+    <!--Блок вывода тестов-->
+    <div class="content_block">
+        <div class="heading_block">
+            <div class="title_block">
+                <h1 class="str_heading">Мое обучение</h1>
+                <p style="opacity: 0;">скрытый текст</p>
+            </div>
+        </div>
+        <hr>
+        <div class="main_form_block">
+            <!-- Блок фильтров -->
+            <div class="filter-block">
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="status-filter">Статус</label>
+                        <select id="status-filter" onchange="applyFilters()">
+                            <option value="">Все тесты</option>
+                            <option value="Активный">Новые</option>
+                            <option>Завершенные</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-item">
+                        <label for="subject-filter">Предмет</label>
+                        <select id="subject-filter" onchange="applyFilters()">
+                            <option value="">Все предметы</option>
+                            <?php foreach($subjects_array as $subject): ?>
+                                <option value="<?= $subject['id'] ?>"><?= $subject['name'] ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-item">
+                        <label for="sort-order">Сортировка</label>
+                        <select id="sort-order" onchange="applyFilters()">
+                            <option value="newest">Сначала новые</option>
+                            <option value="oldest">Сначала старые</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <button class="cansel_button" onclick="resetFilters()">Сбросить</button>
+                    </div>
+                </div>
+            </div>
+            <div class="line_block"></div>
+            <div class="form_content"  id="tests-container">
+                <?php  if ($tests && mysqli_num_rows($tests) > 0): ?>
+                    <?php while ($test = mysqli_fetch_assoc($tests)): ?>
+                        <div class="form_content_block"
+                        data-subject="<?= $test['id_subject'] ?>" 
+                        data-status="<?= $test['status'] ?>"
+                        data-date="<?= htmlspecialchars($test['date_creat']) ?>">
+                            <div class="left_column">
+                                <p class="test_title"><?= htmlspecialchars($test['name']) ?></p>
+                                <p class="test_description"><?= htmlspecialchars($test['description']) ?></p>
+                                <div class="test_details">
+                                    <p class="test_detail">Автор: <?= htmlspecialchars($test['ename']) ?></p>
+                                    <p class="test_detail">Создано: <span class="test-date" data-date="<?= htmlspecialchars($test['date_creat']) ?>"></span></p>
+                                </div>
+                            </div>
+                            <div class="right_column">
+                            <button class="action_button" onclick="openModal(
+                                <?= htmlspecialchars(json_encode([
+                                    'id' => $test['id'],
+                                    'name' => $test['name'],
+                                    'description' => $test['description'],
+                                    'quantity' => $test['quantity'],
+                                    'date_creat' => $test['date_creat'],
+                                    'time' => substr($test['time'], 0, 5),
+                                    'ename' => $test['ename'],
+                                    'subject_name' => $test['subject_name']
+                                ]), ENT_QUOTES, 'UTF-8') ?>
+                            )">Перейти</button>
+                            </div>
+                        </div>
+                    <?php endwhile; ?>
+                <?php else: ?>
+                    <div class="tests_message">Нет доступных тестов</div>
+                <?php endif; ?>
+            </div>
+        </div>
+        
+        <div id="question-modal" class="modal">
+            <div class="modal-content-mini">
+                <div class="modal_head">
+                    <h2>Информация о тесте</h2>
+                    <button class="delete_btn" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal_body">
+                    <div class="testBlock">
+                        <label class="testLabel">Название:</label>
+                        <p class="testText" id="modal-name"></p>
+                    </div>
+                    <div class="testBlock">
+                        <label class="testLabel">Описание:</label>
+                        <p class="testText" id="modal-description"></p>
+                    </div>
+                    <div class="testBlock">
+                        <label class="testLabel">Автор:</label>
+                        <p class="testText" id="modal-author"></p>
+                    </div>
+                    <div class="testBlock">
+                        <label class="testLabel">Предмет:</label>
+                        <p class="testText" id="modal-subject"></p>
+                    </div>
+                    <div class="testBlock">
+                        <label class="testLabel">Количество заданий:</label>
+                        <p class="testText" id="modal-quantity"></p>
+                    </div>
+                    <div class="testBlock">
+                        <label class="testLabel">Время на прохождение:</label>
+                        <p class="testText" id="modal-time"></p>
+                    </div>
+                    <div class="testBlock">
+                        <label class="testLabel">Дата создания:</label>
+                        <p class="testText" id="modal-date"></p>
+                    </div>
+                    
+                    <div class="center_block">
+                        <button class="action_button" onclick="startTestSolution()">Приступить</button>
+                    </div>  
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <script>
+    //Форматирование даты
+    function formatDate(dateString) {
+        if (!dateString) return '';
+        
+        //Вид для года, месяца и дня
+        const options = { 
+            year: 'numeric', 
+            month: 'long', //Полное название месяца
+            day: 'numeric'
+        };
+        
+        try {
+            const date = new Date(dateString.replace(' ', 'T'));
+            return date.toLocaleDateString('ru-RU', options);
+        } catch (e) {
+            console.error('Ошибка форматирования даты:', e);
+            return dateString; 
+        }
+    }
+
+    //Форматирование всех дат на странице
+    function processAllDates() {
+        document.querySelectorAll('.test-date').forEach(el => {
+            const dateString = el.getAttribute('data-date');
+            el.textContent = formatDate(dateString);
+        });
+    }
+
+    //Вывод всей инфы о тесте в модальном окне
+    function openModal(testData) {
+        if (typeof testData === 'string') {
+            testData = JSON.parse(testData);
+        }
+        
+        document.getElementById('modal-name').textContent = testData.name;
+        document.getElementById('modal-description').textContent = testData.description;
+        document.getElementById('modal-quantity').textContent = testData.quantity;
+        document.getElementById('modal-date').textContent = formatDate(testData.date_creat);
+        document.getElementById('modal-time').textContent = formatTestTime(testData.time);
+        document.getElementById('modal-author').textContent = testData.ename;
+        document.getElementById('modal-subject').textContent = testData.subject_name;
+        
+        window.currentTestId = testData.id;
+        
+        const modal = document.getElementById('question-modal');
+        modal.classList.add('active');
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('question-modal');
+        modal.classList.remove('active');
+    }
+
+    //Начало решения теста
+    function startTestSolution() {
+        if (window.currentTestId) {
+            document.cookie = `current_test_id=${window.currentTestId}; path=/`;
+            window.location.href = "student_solution_str.php";
+        }
+    }
+
+    function formatTestTime(timeString) {
+        if (!timeString || timeString === '00:00');
+        
+        const [hours, minutes] = timeString.split(':').map(Number);
+        let result = '';
+        
+        if (hours > 0) {
+            result += hours + ' ' + getHoursWord(hours);
+        }
+        
+        if (minutes > 0) {
+            if (hours > 0) result += ' ';
+            result += minutes + ' ' + getMinutesWord(minutes);
+        }
+        
+        return result;
+    }
+
+    function getHoursWord(hours) {
+        const lastDigit = hours % 10;
+        const lastTwoDigits = hours % 100;
+        
+        if (lastTwoDigits >= 11 && lastTwoDigits <= 19) return 'часов';
+        if (lastDigit === 1) return 'час';
+        if (lastDigit >= 2 && lastDigit <= 4) return 'часа';
+        return 'часов';
+    }
+
+    function getMinutesWord(minutes) {
+        const lastDigit = minutes % 10;
+        const lastTwoDigits = minutes % 100;
+        
+        if (lastTwoDigits >= 11 && lastTwoDigits <= 19) return 'минут';
+        if (lastDigit === 1) return 'минута';
+        if (lastDigit >= 2 && lastDigit <= 4) return 'минуты';
+        return 'минут';
+    }
+
+    // Глобальная переменная для хранения состояния тестов
+    let hasTests = false;
+
+    // Проверка наличия тестов
+    function checkTests(filtered = false) {
+        const container = document.getElementById('tests-container');
+        const testBlocks = container.querySelectorAll('.form_content_block');
+        const noTestsMessage = container.querySelector('.tests_message');
+        
+        // Определяем количество видимых тестов
+        const visibleTests = filtered 
+            ? Array.from(testBlocks).filter(b => b.style.display !== 'none').length
+            : testBlocks.length;
+
+        // Управляем сообщением в зависимости от результатов
+        if (visibleTests === 0) {
+            const messageText = filtered 
+                ? 'Тесты не найдены. Попробуйте изменить параметры фильтрации.'
+                : 'Нет доступных тестов';
+            
+            if (noTestsMessage) {
+                noTestsMessage.textContent = messageText;
+                noTestsMessage.style.display = 'block';
+            } else {
+                const message = document.createElement('div');
+                message.className = 'tests_message';
+                message.textContent = messageText;
+                container.appendChild(message);
+            }
+        } else if (noTestsMessage) {
+            noTestsMessage.style.display = 'none';
+        }
+        
+        // Обновляем глобальное состояние
+        hasTests = testBlocks.length > 0;
+    }
+
+    function resetFilters() {
+        // Сбрасываем значения фильтров
+        document.getElementById('status-filter').value = '';
+        document.getElementById('subject-filter').value = '';
+        document.getElementById('sort-order').value = 'newest';
+        
+        // Показываем все тесты
+        const testBlocks = document.querySelectorAll('#tests-container .form_content_block');
+        testBlocks.forEach(block => block.style.display = 'flex');
+        
+        // Проверяем тесты и сортируем
+        checkTests(false);
+        if (hasTests) sortTests('newest');
+    }
+
+    function applyFilters() {
+        if (!hasTests) return;
+        
+        const subject = document.getElementById('subject-filter').value;
+        const status = document.getElementById('status-filter').value;
+        const sortOrder = document.getElementById('sort-order').value;
+        
+        // Применяем фильтры
+        document.querySelectorAll('#tests-container .form_content_block').forEach(block => {
+            const showBlock = (subject === '' || block.dataset.subject === subject) &&
+                            (status === '' || block.dataset.status === status);
+            block.style.display = showBlock ? 'flex' : 'none';
+        });
+        
+        // Проверяем результаты фильтрации и сортируем
+        checkTests(true);
+        if (hasTests) sortTests(sortOrder);
+    }
+
+    // Сортировка тестов (сначала новые)
+    function sortTests(order = 'newest') {
+        const container = document.getElementById('tests-container');
+        const blocks = Array.from(container.querySelectorAll('.form_content_block'));
+        
+        blocks.sort((a, b) => {
+            const dateA = new Date(a.getAttribute('data-date'));
+            const dateB = new Date(b.getAttribute('data-date'));
+            return order === 'newest' ? dateB - dateA : dateA - dateB;
+        });
+        
+        blocks.forEach(block => container.appendChild(block));
+    }
+
+    // Инициализация страницы
+    window.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('sname').textContent = getCookie("sname");
+        processAllDates();
+
+        // Скрываем сообщение на время инициализации
+        const noTestsMessage = document.querySelector('.tests_message');
+        if (noTestsMessage) noTestsMessage.style.display = 'none';
+        
+        // Проверяем тесты после небольшой задержки
+        checkTests(false);
+        sortTests('newest');
+    });
+
+    //Получаем значение cookie по имени
+    function getCookie(name) {
+        let matches = document.cookie.match(new RegExp(
+            "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
+        ));
+        return matches ? decodeURIComponent(matches[1]) : undefined;
+    }
+    </script>
+</body>
+</html>
